@@ -1,5 +1,7 @@
 import streamlit as st
 import datetime
+import os
+import csv
 
 # Configuración de la página
 st.set_page_config(
@@ -29,6 +31,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Archivo CSV simulado / local para la nube
+ARCHIVO_INVENTARIO = "inventario_equipo1.csv"
+
+def inicializar_inventario_si_no_existe():
+    if not os.path.exists(ARCHIVO_INVENTARIO):
+        with open(ARCHIVO_INVENTARIO, mode='w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "SKU", "Producto", "Categoria", "Stock Actual", 
+                "Stock Minimo", "Costo Unitario", "PVP Sugerido", "Estado Stock"
+            ])
+            writer.writerow(["CHAL-001", "Chaleco Modular Multipropósito NIJ IIIA", "Protección Balística", "4", "5", "35000", "49000", "ALERTA STOCK BAJO"])
+            writer.writerow(["BOT-002", "Bota Táctica Waterproof High-Grip", "Calzado", "15", "4", "28000", "39200", "OK"])
+            writer.writerow(["CAS-003", "Casco Balístico FAST NIJ IIIA", "Protección Balística", "6", "2", "65000", "91000", "OK"])
+
+inicializar_inventario_si_no_existe()
+
 # Encabezado principal
 st.title("🛡️ EQUIPO 1: Sala de Situación y Comando Táctico")
 st.markdown("##### *Ecosistema de 8 Agentes IA especializados en Equipamiento Militar y Táctico*")
@@ -44,8 +63,8 @@ modo_reunion = st.sidebar.selectbox("Estado de la Sala:", [
 ])
 
 st.sidebar.divider()
-st.sidebar.markdown("### 📂 Archivos Centrales")
-st.sidebar.text("• inventario_equipo1.csv")
+st.sidebar.markdown("### 📂 Archivos Centrales en Línea")
+st.sidebar.text("• inventario_equipo1.csv (Conectado)")
 st.sidebar.text("• proveedores_equipo1.csv")
 st.sidebar.text("• competencia_equipo1.csv")
 
@@ -55,13 +74,32 @@ col_izq, col_der = st.columns(2)
 with col_izq:
     st.subheader("📂 Agentes Internos (Operaciones)")
     
-    st.markdown("""
-        <div class='alert-card'>
-            <h4>1. 📦 Logística y Stock</h4>
-            <p><b>Estado:</b> ⚠️ Alerta de Quiebre (Chaleco CHAL-001)</p>
-            <p><i>Monitoreando inventario en tiempo real y disparando órdenes de reposición.</i></p>
-        </div>
-    """, unsafe_allow_html=True)
+    # Lectura dinámica del inventario para el Agente 1 (Logística)
+    with open(ARCHIVO_INVENTARIO, mode='r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        inventario_data = list(reader)
+    
+    alerta_activa = False
+    for prod in inventario_data:
+        if "ALERTA" in prod["Estado Stock"] or int(prod["Stock Actual"]) <= int(prod["Stock Minimo"]):
+            alerta_activa = True
+            st.markdown(f"""
+                <div class='alert-card'>
+                    <h4>1. 📦 Logística y Stock</h4>
+                    <p><b>Estado:</b> ⚠️ Alerta de Quiebre ({prod['SKU']} - {prod['Producto']})</p>
+                    <p><i>Stock Actual: {prod['Stock Actual']} | Mínimo requerido: {prod['Stock Minimo']}</i></p>
+                </div>
+            """, unsafe_allow_html=True)
+            break
+            
+    if not alerta_activa:
+        st.markdown("""
+            <div class='agent-card'>
+                <h4>1. 📦 Logística y Stock</h4>
+                <p><b>Estado:</b> 🟢 Niveles Óptimos de Stock</p>
+                <p><i>Monitoreando inventario en tiempo real sin quiebres críticos.</i></p>
+            </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("""
         <div class='agent-card'>
@@ -121,6 +159,12 @@ with col_der:
             <p><i>Contactando talleres directos de fábrica por mejor precio/calidad.</i></p>
         </div>
     """, unsafe_allow_html=True)
+
+st.divider()
+
+# Visualizador y editor rápido de inventario en la misma War Room
+st.subheader("📊 Inventario en Tiempo Real (Conectado a CSV)")
+st.table(inventario_data)
 
 st.divider()
 
